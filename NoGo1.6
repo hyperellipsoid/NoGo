@@ -1,0 +1,841 @@
+#include <easyx.h>
+#include <graphics.h>
+#include <iostream>
+#include <stdlib.h>
+#include <Windows.h>
+#include<string>
+#include<cstdio>
+#include<vector>
+#include<algorithm>
+#include<fstream>
+using namespace std;
+int board[10][10] = { 0 };//0表无子，1表黑子，-1表白子
+int check_board[10][10] = { 0 };//是否要归零还不确定
+int edge = 9;
+int MOVE[4][2] = { {1,0},{-1,0},{0,1},{0,-1} };
+int cnt = 0;
+int flag_side = 0, flag_game_over = 0;//flag_side用来选边，flag_game_over用来标记一盘游戏的结束
+int MININT = -2147483648;
+//int value = 0;//best_row, best_col,row = 0, col = 0,
+//int best_value = MININT;
+vector<int> available_list;
+int print_board()
+{
+	initgraph(800, 600); //初始化图形系统
+	setbkcolor(RGB(255, 239, 213)); //设置图形窗口的背景颜色
+	cleardevice(); //清屏幕
+	//下面行读取图像文件
+	//loadimage(&black, _T("hei.jpg"), 54, 54, FALSE);
+	//loadimage(&white, _T("bai.jpg"), 54, 54, FALSE);
+	//loadimage(&cundang, _T("cundang.jpg"), 141, 50, FALSE);
+	//下面行显示图像文件
+	//putimage(600, 50, &black);
+	//putimage(600, 380, &white);
+	//putimage(600, 490, &cundang);
+	//下面代码网格
+	setcolor(RGB(0, 0, 0));
+	rectangle(60, 60, 540, 540);
+	setfillcolor(RGB(255, 239, 213));
+	fillrectangle(60, 60, 540, 540);
+	setcolor(RGB(0, 0, 0));
+	line(60, 120, 540, 120);
+	line(60, 180, 540, 180);
+	line(60, 240, 540, 240);
+	line(60, 300, 540, 300);
+	line(60, 360, 540, 360);
+	line(60, 420, 540, 420);
+	line(60, 480, 540, 480);
+	line(120, 60, 120, 540);
+	line(180, 60, 180, 540);
+	line(240, 60, 240, 540);
+	line(300, 60, 300, 540);
+	line(360, 60, 360, 540);
+	line(420, 60, 420, 540);
+	line(480, 60, 480, 540);
+	setcolor(RGB(0, 0, 0));//画黑棋选项
+	rectangle(600, 120, 660, 180);
+	setfillcolor(RGB(0, 0, 0));
+	fillrectangle(600, 120, 660, 180);
+	setcolor(BLACK);//画白棋选项
+	rectangle(600, 240, 660, 300);
+	setfillcolor(WHITE);
+	fillrectangle(600, 240, 660, 300);
+	outtextxy(632, 423, L"RETURN");
+	setcolor(RGB(0, 0, 0));
+	rectangle(600, 420, 720, 440);
+	outtextxy(643, 483, L"SAVE");
+	setcolor(RGB(0, 0, 0));
+	rectangle(600, 480, 720, 500);
+	//void choose_side();
+	while (1) {//选择对弈方
+		MOUSEMSG msg = GetMouseMsg();
+		int x = msg.x;
+		int y = msg.y;
+		if (msg.mkLButton)
+		{
+			
+			//flag_side = choose_side(x, y);
+			if (x >= 600 && x <= 660 && y >= 120 && y <= 180)//600, 120, 660, 180
+			{
+				setfillcolor(RGB(255, 239, 213));
+				fillrectangle(600, 240, 660, 300);
+				flag_side = -1;//AI执白
+				return 1;
+			}
+			else if (x >= 600 && x <= 660 && y >= 240 && y <= 300)//600, 240, 660, 300
+			{
+				setfillcolor(RGB(255, 239, 213));
+				fillrectangle(600, 120, 660, 180);
+				flag_side = 1;//AI执黑
+				return 1;
+			}
+			if (x >= 600 && x <= 720 && y >= 420 && y <= 440) {
+				return 0;
+			}
+			else if (x >= 600 && x <= 720 && y >= 480 && y <= 500) {
+				return 2;
+			}
+		}
+		FlushMouseMsgBuffer();
+	}//选择对弈方
+}
+
+void print_board_pvp()
+{
+	initgraph(800, 600); //初始化图形系统
+	setbkcolor(RGB(255, 239, 213)); //设置图形窗口的背景颜色
+	cleardevice(); //清屏幕
+	//下面行读取图像文件
+	//loadimage(&black, _T("hei.jpg"), 54, 54, FALSE);
+	//loadimage(&white, _T("bai.jpg"), 54, 54, FALSE);
+	//loadimage(&cundang, _T("cundang.jpg"), 141, 50, FALSE);
+	//下面行显示图像文件
+	//putimage(600, 50, &black);
+	//putimage(600, 380, &white);
+	//putimage(600, 490, &cundang);
+	//下面代码网格
+	setcolor(RGB(0, 0, 0));
+	rectangle(60, 60, 540, 540);
+	setfillcolor(RGB(255, 239, 213));
+	fillrectangle(60, 60, 540, 540);
+	setcolor(RGB(0, 0, 0));
+	line(60, 120, 540, 120);
+	line(60, 180, 540, 180);
+	line(60, 240, 540, 240);
+	line(60, 300, 540, 300);
+	line(60, 360, 540, 360);
+	line(60, 420, 540, 420);
+	line(60, 480, 540, 480);
+	line(120, 60, 120, 540);
+	line(180, 60, 180, 540);
+	line(240, 60, 240, 540);
+	line(300, 60, 300, 540);
+	line(360, 60, 360, 540);
+	line(420, 60, 420, 540);
+	line(480, 60, 480, 540);
+	outtextxy(632, 423, L"RETURN");
+	setcolor(RGB(0, 0, 0));
+	rectangle(600, 420, 720, 440);
+	outtextxy(643, 483, L"SAVE");
+	setcolor(RGB(0, 0, 0));
+	rectangle(600, 480, 720, 500);
+	//outtextxy(632, 63, L"BEGIN");
+	//setcolor(RGB(0, 0, 0));
+	//rectangle(600, 60, 720, 80);
+}
+
+int print_menu()
+{
+	initgraph(800, 600); //初始化图形系统
+	setbkcolor(RGB(255, 239, 213)); //设置图形窗口的背景颜色
+	cleardevice(); //清屏幕
+	setcolor(RGB(0, 0, 0));
+	rectangle(60, 60, 300, 120);
+	rectangle(60, 180, 300, 240);
+	rectangle(60, 300, 300, 360);
+	rectangle(60, 420, 300, 480);
+	settextstyle(30, 0, _T("Consolas"));
+	outtextxy(120, 195, _T("BEGIN PVE"));
+	outtextxy(120, 315, _T("BEGIN PVP"));
+	outtextxy(154, 435, _T("EXIT"));
+	while (1)
+	{
+		MOUSEMSG msg = GetMouseMsg();
+		//int button_flag = 0;//1表示按上去未点，2表示已经点过了
+		/*if (x >= 60 && x <= 300 && y >= 180 && y <= 240&&button_flag==0) {
+			clearrectangle(60, 180, 300, 240);
+			setcolor(RGB(0, 0, 0));
+			rectangle(60, 180, 360, 240);
+			outtextxy(120, 195, _T("BEGIN PVE"));
+			button_flag = 1;
+			if (msg.mkLButton) {
+				if (x >= 60 && x <= 360 && y >= 180 && y <= 240) {
+					return 1;//pve module
+				}
+			}
+		}
+		if (x <= 60 && x >= 360 && y <= 180 && y >= 240&&button_flag==1) {
+			clearrectangle(60, 180, 360, 240);
+			setcolor(RGB(0, 0, 0));
+			rectangle(60, 180, 300, 240);
+			outtextxy(120, 195, _T("BEGIN PVE"));
+		}*/
+		if (msg.mkLButton) {
+			int x = msg.x;
+			int y = msg.y;
+			if (x >= 60 && x <= 300 && y >= 180 && y <= 240) {
+				return 1;//pve module
+			}
+			if (x >= 60 && x <= 300 && y >= 300 && y <= 360) {
+				return 2;//pvp module
+			}
+			if (x >= 60 && x <= 300 && y >= 420 && y <= 480) {
+				closegraph();
+				exit(0);
+			}
+			else
+				return 0;
+		}
+	}
+	//return;
+}
+
+void print_game_over_AI(int flag_side)
+{
+	if (flag_side == -1) {//AI执白，AI输
+		outtextxy(600, 360, L"BLACK SIDE WINS");
+	}
+	else if (flag_side == 1) {//AI执黑，AI输
+		outtextxy(600, 360, L"WHITE SIDE WINS");
+	}
+	return;
+}
+
+void print_game_over_human(int human_flag_side)
+{
+	if (human_flag_side == 1) {//AI执白，AI赢
+		outtextxy(600, 360, L"WHITE SIDE WINS");
+	}
+	else if (human_flag_side == -1) {//AI执黑，AI赢
+		outtextxy(600, 360, L"BLACK SIDE WINS");
+	}
+	return;
+}
+
+void print_game_over_pvp(int flag_side)
+{
+	if (flag_side == 1) {
+		outtextxy(600, 360, L"BLACK SIDE WINS");
+	}
+	else if (flag_side == -1) {
+		outtextxy(600, 360, L"WHITE SIDE WINS");
+	}
+	return;
+}
+
+int check(int r, int c)//返回1表示在棋盘内
+{
+	if (r >= 0 && r < 9 && c >= 0 && c < 9)
+		return 1;
+	else
+		return 0;
+}
+
+int judge_eye(int r, int c, int flag_side)//返回0表示不是眼或已有落子，返回1表示是眼
+{
+	if (check(r, c)) {
+		int flag_eye = 0;
+		for (int i = 0; i < 4; i++) {
+			int r1 = r + MOVE[i][0];
+			int c1 = c + MOVE[i][1];
+			if (check(r1, c1)) {
+				if (board[r1][c1] != flag_side && board[r1][c1] != 0) {
+					continue;
+				}
+				else
+					flag_eye = 1;
+			}
+			else
+				continue;
+		}
+		if (flag_eye)
+			return 0;
+		if (!flag_eye)
+			return 1;
+	}
+	else
+		return 0;
+}
+
+bool judge(int r, int c)//返回1表示能下(与上面保持一致)
+{
+	check_board[r][c] = 1;
+	int flag = 0;
+	for (int i = 0; i < 4; i++) {
+		int r1 = r + MOVE[i][0];
+		int c1 = c + MOVE[i][1];
+		if (check(r1, c1)) {
+			if (board[r1][c1] == 0)
+				flag = 1;
+			if (board[r1][c1] == board[r][c] && !check_board[r1][c1]) {
+				if (judge(r1, c1))
+					flag = 1;
+			}
+		}
+	}
+	return flag;
+}
+
+bool judgement(int r, int c, int flag_side)//返回1表示可下
+{
+	if (board[r][c] == 1 || board[r][c] == -1)
+		return 0;
+	board[r][c] = flag_side;
+	memset(check_board, 0, sizeof(check_board));
+	//check_board[r][c] = 1;
+	if (judge(r, c) == 0) {
+		board[r][c] = 0;
+		return 0;
+	}
+	for (int i = 0; i < 4; i++) {
+		int r1 = r + MOVE[i][0];
+		int c1 = c + MOVE[i][1];
+		if (check(r1, c1)) {
+			if (board[r1][c1] && !check_board[r1][c1]) {
+				if (!judge(r1, c1)) {
+					board[r][c] = 0;
+					return 0;
+				}
+			}
+		}
+	}
+	board[r][c] = 0;
+	return 1;
+}
+
+int evaluation(int i, int j, int flag_side)
+{
+	int eye_num = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (judgement(i, j, flag_side)) {
+				if (judge_eye(i, j, flag_side)) {
+					eye_num++;
+				}
+			}
+			else
+				continue;
+		}
+	}
+	return eye_num++;
+}
+
+int judge_eye_eval(int row, int col, int flag_si)
+{
+	int Qi = 4;
+	if (board[row][col] == 0) {
+		for (int i = 0; i < 4; i++) {
+			int row1 = row + MOVE[i][0];
+			int col1 = col + MOVE[i][1];
+			if (!check(row1, col1))
+				Qi--;
+			else if (board[row1][col1] == -flag_si)
+				Qi--;
+		}
+		if (Qi == 0) 
+			return 1;
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+
+int right(int flag_s)
+{
+	int sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (board[i][j] == 0) {
+				if (judge_eye_eval(i, j, flag_s))
+					sum_right++;
+			}
+		}
+	}
+	return sum_right;
+}
+
+int op_right(int flag_s)
+{
+	int op_sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (!judgement(i, j, flag_s)&&board[i][j] == 0) {
+				op_sum_right++;
+			}
+		}
+	}
+	return op_sum_right;
+	//return rand() % 50;
+}
+
+int fr_right(int flag_s)
+{
+	int fr_sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (!judgement(i, j, flag_s)&&board[i][j] == 0) {
+				fr_sum_right++;
+			}
+		}
+	}
+	return fr_sum_right;
+	//return cnt;
+	//return rand() % 50;
+}
+
+int nega_max(int r,int c,int depth, int flag_s,int alpha, int beta)//flag_side==1表示AI为黑方，flagSide==2表示AI为白方
+{
+	int flag_nega_win = 0;
+	int best_value = MININT;
+	if (depth == 0)
+		return right(flag_s) + right(-flag_s);
+	for (int row = 0; row < edge; row++) {
+		for (int col = 0; col < edge; col++) {
+			if (!board[row][col]) {
+				int value = 0;
+				if (!judgement(row, col, flag_s)) {
+					continue;
+				}
+				else {
+					flag_nega_win = 1;
+					board[row][col] = flag_s;
+					value = -nega_max(row,col,depth - 1, -flag_s, -beta, -alpha);
+					//value = op_right(flag_s) + fr_right(flag_s);
+					board[row][col] = 0;
+				}
+				if (value >= alpha) {
+					alpha = value;
+				}
+				if (alpha >= beta)
+					break;
+			}
+			else
+				continue;
+		}
+	}
+	if (!flag_nega_win)//用于返回胜负已定时的情形
+		return right(flag_s) + right(-flag_s);
+	return alpha;
+}
+
+int visit(int depth, int flag_side, int num_available)
+{
+	//if (cnt > 20) {
+		int value = MININT;
+		//int flag_inequal_right = 0;
+		int flag_inequal_right = 0;//标记是否全部估值函数相等
+		int chosen_pos = 0;
+		int count = 0, count_equal_pos = 0;
+		vector<int> possible_pos_list;
+		for (int row = 0; row < edge; row++) {
+			for (int col = 0; col < edge; col++) {
+				if (judgement(row, col, flag_side)) {
+					board[row][col] = flag_side;
+					int temp_value = -nega_max(row, col, depth, -flag_side, MININT, MININT) + MININT;
+					board[row][col] = 0;
+					/*if (temp_value > value) {
+						value = temp_value;
+						chosen_pos = row * edge + col;
+						//flag_inequal_right = 1;
+						if (count > 0) {
+							flag_inequal_right = 1;
+						}
+					}*/
+					if (temp_value >= value) {
+						if (temp_value = value) {
+							count_equal_pos++;
+							possible_pos_list.push_back(row * edge + col);
+						}
+						if (temp_value > value) {
+							possible_pos_list.clear();
+							value = temp_value;
+							chosen_pos = row * edge + col;
+							possible_pos_list.push_back(chosen_pos);
+						}
+					}
+					count++;
+				}
+				else
+					continue;
+			}
+		}
+		if (possible_pos_list.size()==1) {
+			outtextxy(600, 320, L"DONE_NEGA");//调试用，正式版需删除
+			return chosen_pos;
+		}
+		else if (possible_pos_list.size() > 1) {
+			outtextxy(600, 320, L"DONE_NEGA_RAND");
+			return possible_pos_list[rand() % possible_pos_list.size()];
+		}
+	    else
+		    return available_list[rand() % num_available];
+}
+	
+int judge_eye_breaker(int r,int c,int flag_side)//返回1表示优先下此处
+{
+	int Qi = 4;
+	//int suround_en = 0;
+	int	suround_fr = 0;
+	if (check(r, c)) {
+		for (int i = 0; i < 4; i++) {
+			int r1 = r + MOVE[i][0];
+			int c1 = c + MOVE[i][1];
+			if (check(r1, c1)) {
+				if (board[r1][c1] != 0) {
+					Qi--;
+					if (board[r1][c1] == flag_side)
+						suround_fr++;
+					//else if (board[r1][c1] != flag_side)
+						//suround_en++;
+				}
+			}
+			else {
+				Qi--;
+			}
+		}
+	}
+	if (Qi == 1&&suround_fr==0)
+		return 1;
+	else
+		return 0;
+}
+
+int move_eye_breaker(int r, int c, int flag_side)
+{
+	for (int i = 0; i < 4; i++) {
+		int r1 = r + MOVE[i][0];
+		int c1 = c + MOVE[i][1];
+		if (judgement(r1, c1, flag_side)&&check(r1,c1)) {
+			return r1 * edge + c1;
+		}
+	}
+	return MININT;
+}
+
+int eye_maker(int r, int c, int flag_side)
+{
+	return 0;
+}
+
+void choose_side()
+{
+	while (1) {//选择对弈方
+		MOUSEMSG msg = GetMouseMsg();
+		if (msg.mkLButton)
+		{
+			int x = msg.x;
+			int y = msg.y;
+			//flag_side = choose_side(x, y);
+			if (x >= 600 && x <= 660 && y >= 120 && y <= 180)//600, 120, 660, 180
+			{
+				setfillcolor(RGB(255, 239, 213));
+				fillrectangle(600, 240, 660, 300);
+				flag_side = -1;//AI执白
+				return;
+			}
+			else if (x >= 600 && x <= 660 && y >= 240 && y <= 300)//600, 240, 660, 300
+			{
+				setfillcolor(RGB(255, 239, 213));
+				fillrectangle(600, 120, 660, 180);
+				flag_side = 1;//AI执黑
+				return;
+			}
+			else if (x >= 600 && x <= 720 && y >= 420 && y <= 440) {
+				print_menu();
+			}
+		}
+		FlushMouseMsgBuffer();
+	}//选择对弈方
+}
+
+void stop()
+{
+	while (1)
+	{
+		MOUSEMSG msg = GetMouseMsg();
+		if (msg.mkLButton) {
+			int x = msg.x;
+			int y = msg.y;
+			if (x >= 600 && x <= 720 && y >= 420 && y <= 440) {
+				break;
+			}
+		}
+	}
+	FlushMouseMsgBuffer();
+	return;
+}
+
+void first_move_AI(int flag_side)
+{
+	if (flag_side == 1)//人选白棋时AI的第一手棋
+	{
+		int x0 = 60; int y0 = 60;
+		int initial_x = 7, initial_y = 1;
+		board[initial_y][initial_x] = flag_side;
+		setfillcolor(BLACK);
+		fillcircle(x0 + initial_x * 60, y0 + initial_y * 60, 25);
+		cnt++;
+	}//人选白棋时AI的第一手棋
+	return;
+}
+
+int save_file()//return 0对应打开失败
+{
+	ofstream outfile("board.txt");
+	if (!outfile) {
+		outtextxy(600, 380, L"SAVE FILE FAILED");
+		outfile.close();
+		return 0;
+	}
+	else {
+		for (int i = 0; i < edge; i++) {
+			for (int j = 0; j < edge; j++) {
+				outfile << board[i][j];
+			}
+			outfile << endl;
+		}
+		outfile.close();
+		return 1;
+	}
+}
+
+int game_AI_human()
+{
+	while (1)
+	{
+		int depth = 2;
+		MOUSEMSG msg = GetMouseMsg();
+		if (msg.mkLButton)//人执黑，AI执白
+		{
+			int finish_loop = 0;//用来让游戏结束
+			int x = msg.x;
+			int y = msg.y;
+			if (x >= 600 && x <= 720 && y >= 420 && y <= 440) {
+				return 1;//游戏中点return
+			}
+			if (x >= 600 && x <= 720 && y >= 480 && y <= 500) {
+				save_file();
+			}
+			//以下可改写为一个函数
+			for (int j = 0; j < edge; j++) {
+				for (int i = 0; i < edge; i++) {
+					int x0 = 60, y0 = 60;
+					if (((x - (x0 + i * 60)) * (x - (x0 + i * 60)) + (y - (y0 + j * 60)) * (y - (y0 + j * 60)) <= 30 * 30) && (board[j][i] == 0)) {
+						if (judgement(j, i, -flag_side)) {
+							board[j][i] = -flag_side;
+							if (flag_side == -1) {
+								setfillcolor(BLACK);
+							}
+							else if (flag_side == 1) {
+								setfillcolor(WHITE);
+							}
+							fillcircle(x0 + i * 60, y0 + j * 60, 25);
+							setfillcolor(RGB(255, 239, 213));
+							fillrectangle(600, 320, 720, 400);
+							cnt++;
+							//人走后，马上进AI判断
+							//vector<int> available_list; //合法位置表 
+							available_list.clear();
+							int suspension = 0;
+							for (int i = 0; i < 9; i++) {
+								for (int j = 0; j < 9; j++) {
+									if (judgement(i, j, flag_side)) {
+										if (!judge_eye_breaker(i, j, flag_side)) {
+											available_list.push_back(i * 9 + j);
+										}
+										else {
+											suspension = 1;
+											board[i][j] = flag_side;
+											if (flag_side == -1) {
+												setfillcolor(WHITE);
+											}
+											else if (flag_side == 1) {
+												setfillcolor(BLACK);
+											}
+											fillcircle(x0 + j * 60, y0 + i * 60, 25);
+											cnt++;
+											break;
+										}
+									}
+									/*if ((!judgement(i, j, flag_side)) && judge_eye_breaker(i, j, flag_side)&&board[i][j] == 0) {
+										suspension = 1;
+										int result = move_eye_breaker(i, j, flag_side); 
+										if (result == MININT) {
+											break;
+										}
+										else {
+											board[result / edge][result % edge] = flag_side;
+											if (flag_side == -1) {
+												setfillcolor(WHITE);
+											}
+											else if (flag_side == 1) {
+												setfillcolor(BLACK);
+											}
+											fillcircle(x0 + (result % edge) * 60, y0 + (result / edge) * 60, 25);
+											cnt++;
+											break;
+										}
+									}*/
+								}
+								if (suspension)
+									break;
+							}
+							if (!suspension) {
+								if (available_list.size() == 0) {//若AI没位置下，判AI输
+									print_game_over_AI(flag_side);
+									flag_game_over = 1;
+								}
+								else {
+									//int result = available_list[rand() % available_list.size()];
+									int result = visit( depth, flag_side,available_list.size());
+									int best_row = result / 9; int best_col = result % 9;
+									board[best_row][best_col] = flag_side;
+									if (flag_side == -1) {
+										setfillcolor(WHITE);
+									}
+									else if (flag_side == 1) {
+										setfillcolor(BLACK);
+									}
+									fillcircle(x0 + best_col * 60, y0 + best_row * 60, 25);
+									
+									cnt++;
+									/*string num = to_string(cnt);
+									_stprintf(num,)
+									outtextxy(600, 340, num);*/
+								}
+							}
+							suspension = 0;
+						}
+						else {
+							print_game_over_human(-flag_side);
+							flag_game_over = 1;
+						}
+						finish_loop = 1;
+						//best_row = 0; best_col = 0;
+						break;
+					}
+				}
+				if (finish_loop)
+					break;
+			}
+			if (flag_game_over)
+				break;
+		}
+		available_list.clear();
+		FlushMouseMsgBuffer();
+	}
+	return 2;//整盘游戏结束后点return
+}
+
+int game_human_human()
+{
+	int flag_side = 1;
+	while (1) {
+		MOUSEMSG msg = GetMouseMsg();
+		if (msg.mkLButton)//人执黑，AI执白
+		{
+			int finish_loop = 0;//用来让游戏结束
+			int change_flag = 0;//用来判断是否转换对弈方
+			int x = msg.x;
+			int y = msg.y;
+			if (x >= 600 && x <= 720 && y >= 420 && y <= 440) {
+				return 1;//游戏中点return
+			}
+			if (x >= 600 && x <= 720 && y >= 480 && y <= 500) {
+				save_file();
+			}
+			for (int j = 0; j < edge; j++) {//注意这里在输入棋盘进入board里时，行是j，列是i
+				for (int i = 0; i < edge; i++) {
+					int x0 = 60, y0 = 60;
+					if (((x - (x0 + i * 60)) * (x - (x0 + i * 60)) + (y - (y0 + j * 60)) * (y - (y0 + j * 60)) <= 30 * 30) && (board[j][i] == 0)) {
+						if (judgement(j, i, flag_side)) {
+							board[j][i] = flag_side;
+							if (flag_side == -1) {
+								setfillcolor(WHITE);
+							}
+							else if (flag_side == 1) {
+								setfillcolor(BLACK);
+							}
+							fillcircle(x0 + i * 60, y0 + j * 60, 25);
+							setfillcolor(RGB(255, 239, 213));
+							fillrectangle(600, 320, 720, 400);
+							cnt++;
+							change_flag = 1;
+							break;
+						}
+						else if (board[j][i] != 0) {
+							break;
+						}
+						else if (!judgement(j, i, flag_side)) {
+							print_game_over_pvp(-flag_side);
+							flag_game_over = 1;
+							break;
+						}
+					}
+				}
+			}
+			if (change_flag) {
+				flag_side = -flag_side;
+			}
+			if (flag_game_over)
+				break;
+		}
+		FlushMouseMsgBuffer();
+	}
+	return 2;//整盘棋下完后点return
+}
+
+void clear_data()
+{
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			board[i][j] = 0;
+		}
+	}
+	cnt = 0; flag_side = 0; flag_game_over = 0;//value = 0;//row = 0, col = 0, best_value = MININT, 
+}
+
+//x横，y竖
+IMAGE white;
+IMAGE black;
+IMAGE cundang;
+int main()
+{
+	while (1) {
+		int choose_module = print_menu();
+		if (choose_module == 1) {
+			int flag_continue = print_board();
+			if (flag_continue == 1) {
+				first_move_AI(flag_side);
+				int whether_stop = game_AI_human();
+				if (whether_stop == 2) {
+					stop();//用来在整盘游戏结束后停留在board界面
+				}
+			}
+			else if (flag_continue == 2) {
+				save_file();
+			}
+			clear_data();
+		}
+		else if (choose_module == 2) {
+			print_board_pvp();
+		    int whether_stop = game_human_human();
+			if (whether_stop == 2) {
+				stop();//用来在整盘游戏结束后停留在board界面
+			}
+			clear_data();
+		}
+	}
+	return 0;
+}
