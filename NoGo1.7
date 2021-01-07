@@ -1,0 +1,296 @@
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <cstring>
+#include "jsoncpp/json.h"
+using namespace std;
+int MININT = -147483648;
+int board[9][9];
+//int value = 0;
+vector<int> available_list; //合法位置表 
+bool dfs_air_visit[9][9];
+const int cx[] = { -1,0,1,0 };
+const int cy[] = { 0,-1,0,1 };
+int MOVE[4][2] = { {1,0},{-1,0},{0,1},{0,-1} };
+int edge = 9;
+
+bool inBorder(int x, int y) { return x >= 0 && y >= 0 && x < 9 && y < 9; }
+
+//true: has air
+bool dfs_air(int fx, int fy)
+{
+	dfs_air_visit[fx][fy] = true;
+	bool flag = false;
+	for (int dir = 0; dir < 4; dir++)
+	{
+		int dx = fx + cx[dir], dy = fy + cy[dir];
+		if (inBorder(dx, dy))
+		{
+			if (board[dx][dy] == 0)
+				flag = true;
+			if (board[dx][dy] == board[fx][fy] && !dfs_air_visit[dx][dy])
+				if (dfs_air(dx, dy))
+					flag = true;
+		}
+	}
+	return flag;
+}
+
+//true: available
+bool judgeAvailable(int fx, int fy, int col)
+{
+	if (board[fx][fy]) return false;
+	board[fx][fy] = col;
+	memset(dfs_air_visit, 0, sizeof(dfs_air_visit));
+	if (!dfs_air(fx, fy))
+	{
+		board[fx][fy] = 0;
+		return false;
+	}
+	for (int dir = 0; dir < 4; dir++)
+	{
+		int dx = fx + cx[dir], dy = fy + cy[dir];
+		if (inBorder(dx, dy))
+		{
+			if (board[dx][dy] && !dfs_air_visit[dx][dy])
+				if (!dfs_air(dx, dy))
+				{
+					board[fx][fy] = 0;
+					return false;
+				}
+		}
+	}
+	board[fx][fy] = 0;
+	return true;
+}
+int judge_eye(int r, int c, int col)
+{
+	int Qi = 4;
+	int suround_fr = 0;
+	if (inBorder(r, c)) {
+		for (int i = 0; i < 4; i++) {
+			int r1 = r + MOVE[i][0];
+			int c1 = c + MOVE[i][1];
+			if (inBorder(r1, c1)) {
+				if (board[r1][c1] != 0) {
+					Qi--;
+					if (board[r1][c1] == col)
+						suround_fr++;
+				}
+			}
+			else {
+				Qi--;
+			}
+		}
+	}
+	if (Qi == 1 && suround_fr == 0)
+		return 1;
+	else
+		return 0;
+}
+
+int judge_eye_eval(int row,int col,int flag_si)
+{
+	int Qi = 4;
+	if (board[row][col] == 0) {
+		for (int i = 0; i < 4; i++) {
+			int row1 = row + MOVE[i][0];
+			int col1 = col + MOVE[i][1];
+			if (!inBorder(row1, col1))
+				Qi--;
+			else if (board[row1][col1] == -flag_si)
+				Qi--;
+		}
+		if (Qi == 0)
+			return 1;
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+
+int right(int flag_s)
+{
+	int sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (board[i][j] == 0) {
+				if (judge_eye_eval(i, j, flag_s))
+					sum_right++;
+			}
+		}
+	}
+	return sum_right;
+}
+
+int move_eye_breaker(int r, int c, int flag_side)
+{
+	for (int i = 0; i < 4; i++) {
+		int r1 = r + MOVE[i][0];
+		int c1 = c + MOVE[i][1];
+		if (judgeAvailable(r1, c1, flag_side)&&inBorder(r1,c1)) {
+			return r1 * edge + c1;
+		}
+	}
+	return MININT;
+}
+
+int op_right(int flag_s)
+{
+	int op_sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (!judgeAvailable(i, j, -flag_s) && board[i][j] == 0) {
+				op_sum_right++;
+			}
+		}
+	}
+	return op_sum_right;
+}
+
+int fr_right(int flag_s)
+{
+	int fr_sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (!judgeAvailable(i, j, flag_s) && board[i][j] == 0) {
+				fr_sum_right++;
+			}
+		}
+	}
+	return fr_sum_right;
+}
+
+int nega_max(int r, int c, int depth, int flag_s, int alpha, int beta)//flag_side==1表示AI为黑方，flagSide==2表示AI为白方
+{
+	int flag_nega_win = 0;
+	//int best_value = MININT;
+	if (depth == 0)
+		return right(flag_s) + right(-flag_s);
+	for (int row = 0; row < edge; row++) {
+		for (int col = 0; col < edge; col++) {
+			if (!board[row][col]) {
+				int value = 0;
+				if (!judgeAvailable(row, col, flag_s)) {
+					continue;
+				}
+				else {
+					flag_nega_win = 1;
+					board[row][col] = flag_s;
+					value = -nega_max(row, col, depth - 1, -flag_s,-beta,-alpha);
+					board[row][col] = 0;
+				}
+				if (value >= alpha) {
+					alpha = value;
+				}
+				if (alpha >= beta)
+					break;
+				//以下用来清空初始数据
+				//col = 0; row = 0;
+			}
+			else
+				continue;
+		}
+	}
+	if (!flag_nega_win)//用于返回胜负已定时的情形
+		return right(flag_s) + right(-flag_s);
+	return alpha;
+}
+
+int visit(int depth, int flag_side, int num_available)
+{
+	int value = MININT;
+	int flag_inequal_right = 0;
+	int chosen_pos = 0;
+	for (int row = 0; row < edge; row++) {
+		for (int col = 0; col < edge; col++) {
+			if (judgeAvailable(row, col, flag_side)) {
+				board[row][col] = flag_side;
+				int temp_value = -nega_max(row, col, depth, -flag_side, MININT, MININT) + MININT;
+				board[row][col] = 0;
+				if (temp_value > value) {
+					value = temp_value;
+					chosen_pos = row * edge + col;
+					flag_inequal_right = 1;
+				}
+			}
+			else
+				continue;
+		}
+	}
+	if (flag_inequal_right) {
+		return chosen_pos;
+	}
+	else
+		return available_list[rand() % num_available];
+}
+
+int main()
+{
+	srand((unsigned)time(0));
+	string str;
+	int x, y;
+	// 读入JSON
+	getline(cin, str);
+	//getline(cin, str);
+	Json::Reader reader;
+	Json::Value input;
+	reader.parse(str, input);
+	// 分析自己收到的输入和自己过往的输出，并恢复状态
+	int turnID = input["responses"].size();
+	for (int i = 0; i < turnID; i++)
+	{
+		x = input["requests"][i]["x"].asInt(), y = input["requests"][i]["y"].asInt();
+		if (x != -1) board[x][y] = 1;
+		x = input["responses"][i]["x"].asInt(), y = input["responses"][i]["y"].asInt();
+		if (x != -1) board[x][y] = -1;
+	}
+	x = input["requests"][turnID]["x"].asInt(), y = input["requests"][turnID]["y"].asInt();
+	if (x != -1) board[x][y] = 1;
+	// 输出决策JSON
+	Json::Value ret;
+	Json::Value action;
+	int suspension = 0;
+	int depth = 2;
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < 9; j++) {
+			if (judgeAvailable(i, j, x == -1 ? 1 : -1)) {
+				if (!judge_eye(i, j, x == -1 ? 1 : -1)) {
+					available_list.push_back(i * 9 + j);
+				}
+				else {
+					suspension = 1;
+					//int result = move_eye_breaker(i, j, x == -1 ? 1 : -1);
+					int result = i * edge + j;
+					action["x"] = result/edge; action["y"] = result%edge;
+					break;
+				}
+			}
+			/*if (!judgeAvailable(i, j, x == -1 ? 1 : -1) && judge_eye(i, j, x == -1 ? 1 : -1) && board[i][j] == 0) {
+				int result = move_eye_breaker(i, j, x == -1 ? 1 : -1);
+				if (result == MININT) {
+
+				}
+				else {
+					action["x"] = result / edge; action["y"] = result % edge;
+					break;
+				}
+			}*/
+		}
+		if (suspension) {
+			break;
+		}
+	}
+	if (!suspension) {
+		//int result = available_list[rand() % available_list.size()];
+		int result = visit(depth, x == -1 ? 1 : -1, available_list.size());
+		action["x"] = result / 9; action["y"] = result % 9;
+	}
+	suspension = 0;
+	available_list.clear();
+	ret["response"] = action;
+	Json::FastWriter writer;
+	cout << writer.write(ret) << endl;
+	return 0;
+}
