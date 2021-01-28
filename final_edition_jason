@@ -1,0 +1,439 @@
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <cstring>
+#include "jsoncpp/json.h"
+using namespace std;
+int MININT = -2147483648;
+int board[9][9];
+//int value = 0;
+vector<int> available_list; //合法位置表 
+bool dfs_air_visit[9][9];
+const int cx[] = { -1,0,1,0 };
+const int cy[] = { 0,-1,0,1 };
+int MOVE[4][2] = { {1,0},{-1,0},{0,1},{0,-1} };
+int edge = 9;
+
+bool inBorder(int x, int y) { return x >= 0 && y >= 0 && x < 9 && y < 9; }
+//true: has air
+bool dfs_air(int fx, int fy)
+{
+	dfs_air_visit[fx][fy] = true;
+	bool flag = false;
+	for (int dir = 0; dir < 4; dir++)
+	{
+		int dx = fx + cx[dir], dy = fy + cy[dir];
+		if (inBorder(dx, dy))
+		{
+			if (board[dx][dy] == 0)
+				flag = true;
+			if (board[dx][dy] == board[fx][fy] && !dfs_air_visit[dx][dy])
+				if (dfs_air(dx, dy))
+					flag = true;
+		}
+	}
+	return flag;
+}
+//true: available
+bool judgeAvailable(int fx, int fy, int col)
+{
+	if (board[fx][fy]) return false;
+	board[fx][fy] = col;
+	memset(dfs_air_visit, 0, sizeof(dfs_air_visit));
+	if (!dfs_air(fx, fy))
+	{
+		board[fx][fy] = 0;
+		return false;
+	}
+	for (int dir = 0; dir < 4; dir++)
+	{
+		int dx = fx + cx[dir], dy = fy + cy[dir];
+		if (inBorder(dx, dy))
+		{
+			if (board[dx][dy] && !dfs_air_visit[dx][dy])
+				if (!dfs_air(dx, dy))
+				{
+					board[fx][fy] = 0;
+					return false;
+				}
+		}
+	}
+	board[fx][fy] = 0;
+	return true;
+}
+
+int judge_eye(int r, int c, int col)
+{
+	int Qi = 4;
+	int suround_fr = 0;
+	if (inBorder(r, c)) {
+		for (int i = 0; i < 4; i++) {
+			int r1 = r + MOVE[i][0];
+			int c1 = c + MOVE[i][1];
+			if (inBorder(r1, c1)) {
+				if (board[r1][c1] != 0) {
+					Qi--;
+					if (board[r1][c1] == col)
+						suround_fr++;
+				}
+			}
+			else {
+				Qi--;
+			}
+		}
+	}
+	if (Qi == 1 && suround_fr == 0)
+		return 1;
+	else
+		return 0;
+}
+
+int judge_eye_eval(int row,int col,int flag_si)
+{
+	int Qi = 4;
+	if (board[row][col] == 0) {
+		for (int i = 0; i < 4; i++) {
+			int row1 = row + MOVE[i][0];
+			int col1 = col + MOVE[i][1];
+			if (!inBorder(row1, col1))
+				Qi--;
+			else if (board[row1][col1] == -flag_si)
+				Qi--;
+		}
+		if (Qi == 0)
+			return 1;
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+
+int right(int flag_s)
+{
+	int sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (board[i][j] == 0) {
+				if (judge_eye_eval(i, j, flag_s))
+					sum_right++;
+			}
+		}
+	}
+	return sum_right;
+}
+
+int move_eye_breaker(int r, int c, int flag_side)
+{
+	for (int i = 0; i < 4; i++) {
+		int r1 = r + MOVE[i][0];
+		int c1 = c + MOVE[i][1];
+		if (judgeAvailable(r1, c1, flag_side)&&inBorder(r1,c1)) {
+			return r1 * edge + c1;
+		}
+	}
+	return MININT;
+}
+
+int eye_maker(int r, int c, int flag_side)//返回-2表示没找到这样的点
+{
+	//扫描的时候要扫所有可行点
+	if (board[r][c] == 0) {
+		int cnt_fr = 0;
+		int chosen_r = 0, chosen_c = 0;
+		for (int i = 0; i < 4; i++) {
+			int r1 = r + MOVE[i][0];
+			int c1 = c + MOVE[i][1];
+			if (inBorder(r1, c1)) {
+				if (board[r1][c1] == flag_side) {
+					cnt_fr++;
+				}
+				else if (board[r1][c1] == 0) {
+					chosen_r = r1;
+					chosen_c = c1;
+				}
+			}
+			else if (!inBorder(r1, c1)) {
+				cnt_fr++;
+			}
+		}
+		if (cnt_fr == 3) {
+			return chosen_r * edge + chosen_c;
+		}
+		else
+			return -2;
+	}
+	else
+		return -2;
+}
+
+int op_right(int flag_s)
+{
+	int op_sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (!judgeAvailable(i, j, -flag_s) && board[i][j] == 0) {
+				op_sum_right++;
+			}
+		}
+	}
+	return op_sum_right;
+}
+
+int fr_right(int flag_s)
+{
+	int fr_sum_right = 0;
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (!judgeAvailable(i, j, flag_s) && board[i][j] == 0) {
+				fr_sum_right++;
+			}
+		}
+	}
+	return fr_sum_right;
+}
+
+int nega_max(int r, int c, int depth, int flag_s, int alpha, int beta)//flag_side==1表示AI为黑方，flagSide==2表示AI为白方
+{
+	int flag_nega_win = 0;
+	//int best_value = MININT;
+	if (depth == 0)
+		return right(flag_s) + right(-flag_s);
+	for (int row = 0; row < edge; row++) {
+		for (int col = 0; col < edge; col++) {
+			if (!board[row][col]) {
+				int value = 0;
+				if (!judgeAvailable(row, col, flag_s)) {
+					continue;
+				}
+				else {
+					flag_nega_win = 1;
+					board[row][col] = flag_s;
+					value = -nega_max(row, col, depth - 1, -flag_s,-beta,-alpha);
+					board[row][col] = 0;
+				}
+				if (value >= alpha) {
+					alpha = value;
+				}
+				if (alpha >= beta)
+					break;
+				//以下用来清空初始数据
+				//col = 0; row = 0;
+			}
+			else
+				continue;
+		}
+	}
+	if (!flag_nega_win)//用于返回胜负已定时的情形
+		return right(flag_s) + right(-flag_s);
+	return alpha;
+}
+
+int culc_manh_dis(int r, int c)//计算曼哈顿距离，并算得其中最小值
+{
+	int dis = 147483648;//最大int型
+	for (int i = 0; i < edge; i++) {
+		for (int j = 0; j < edge; j++) {
+			if (board[i][j] != 0) {
+				if (i != r && j != c) {
+					int temp_dis = abs(r - i) + abs(c - j);
+					if (temp_dis < dis) {
+						dis = temp_dis;
+					}
+				}
+			}
+		}
+	}
+	return dis;
+}
+
+int visit(int depth, int flag_side, int num_available)
+{
+	int value = MININT;
+	//int flag_inequal_right = 0;
+	int manh_chosen_pos = 0;
+	int chosen_pos = 0;
+	int max_dis = 0;
+	vector<int> possible_pos_list;
+	//vector<int> possible_pos_dis_list;//记录曼哈顿距离下的可选点
+	//int count = 0;
+	for (int row = 0; row < edge; row++) {
+		for (int col = 0; col < edge; col++) {
+			if (judgeAvailable(row, col, flag_side)) {
+				board[row][col] = flag_side;
+				int temp_value = -nega_max(row, col, depth, -flag_side, MININT, MININT) + MININT;
+				//int temp_dis = culc_manh_dis(row, col);
+				board[row][col] = 0;
+				/*if (temp_value > value) {
+					value = temp_value;
+					chosen_pos = row * edge + col;
+					if (count > 0) {
+						flag_inequal_right = 1;
+					}
+				}*/
+				//count++;
+				/*if (temp_dis >= max_dis) {
+					if (temp_dis == max_dis) {
+						possible_pos_dis_list.push_back(row * edge + col);
+					}
+					else if (temp_dis > max_dis) {
+						possible_pos_dis_list.clear();
+						max_dis = temp_dis;
+						manh_chosen_pos = row * edge + col;
+						possible_pos_dis_list.push_back(manh_chosen_pos);
+					}
+				}*/
+				if (temp_value >= value) {
+					if (temp_value == value) {
+						//count_equal_pos++;
+						possible_pos_list.push_back(row * edge + col);
+					}
+					if (temp_value > value) {
+						possible_pos_list.clear();
+						value = temp_value;
+						chosen_pos = row * edge + col;
+						possible_pos_list.push_back(chosen_pos);
+					}
+				}
+			}
+			else
+				continue;
+		}
+	}
+	/*if (possible_pos_list.size() == available_list.size()) {
+		if (possible_pos_dis_list.size() == 1) {
+			return manh_chosen_pos;
+		}
+		else if (possible_pos_dis_list.size() > 1) {
+			return possible_pos_dis_list[rand() % possible_pos_dis_list.size()];
+		}
+	}*/
+	//else {
+	if (chosen_pos == 0 && board[0][0] != 0) {
+		return available_list[rand() % available_list.size()];
+	}
+	else {
+		if (possible_pos_list.size() == 1) {
+			return chosen_pos;
+		}
+		else if (possible_pos_list.size() > 1) {
+			return possible_pos_list[rand() % possible_pos_list.size()];
+		}
+		//}
+		if (possible_pos_list.size() == 0) {
+			return available_list[rand() % available_list.size()];
+		}
+	}
+}
+
+int main()
+{
+	srand((unsigned)time(0));
+	string str;
+	int x, y;
+	// 读入JSON
+	getline(cin, str);
+	//getline(cin, str);
+	Json::Reader reader;
+	Json::Value input;
+	reader.parse(str, input);
+	// 分析自己收到的输入和自己过往的输出，并恢复状态
+	int turnID = input["responses"].size();
+	for (int i = 0; i < turnID; i++)
+	{
+		x = input["requests"][i]["x"].asInt(), y = input["requests"][i]["y"].asInt();
+		if (x != -1) board[x][y] = 1;
+		x = input["responses"][i]["x"].asInt(), y = input["responses"][i]["y"].asInt();
+		if (x != -1) board[x][y] = -1;
+	}
+	x = input["requests"][turnID]["x"].asInt(), y = input["requests"][turnID]["y"].asInt();
+	if (x != -1) board[x][y] = 1;
+	// 输出决策JSON
+	Json::Value ret;
+	Json::Value action;
+	int suspension = 0;
+	int depth = 3;
+	for (int i = 0; i < 9; i++) {
+		for (int j = 0; j < 9; j++) {
+			if (judgeAvailable(i, j, x == -1 ? 1 : -1)) {
+				if (!judge_eye(i, j, x == -1 ? 1 : -1)) {
+					/*int chosen_eye_maker_pos = eye_maker(i, j, x == -1 ? 1 : -1);
+					if (chosen_eye_maker_pos >= 0) {
+						suspension = 1;
+						int chosen_row = chosen_eye_maker_pos / edge;
+						int chosen_col = chosen_eye_maker_pos % edge;
+						if (board[chosen_row][chosen_col] == 0) {
+							action["x"] = chosen_row; action["y"] = chosen_col;
+							break;
+						}
+						else if (board[chosen_row][chosen_col] != 0) {
+							available_list.push_back(i * 9 + j);
+						}
+					}*/
+					//else {
+						available_list.push_back(i * 9 + j);
+					//}
+				}
+				else {
+					suspension = 1;
+					//int result = move_eye_breaker(i, j, x == -1 ? 1 : -1);
+					int result = i * edge + j;
+					action["x"] = result/edge; action["y"] = result%edge;
+					break;
+				}
+			}
+			/*if (!judgeAvailable(i, j, x == -1 ? 1 : -1) && judge_eye(i, j, x == -1 ? 1 : -1) && board[i][j] == 0) {
+				int result = move_eye_breaker(i, j, x == -1 ? 1 : -1);
+				if (result == MININT) {
+
+				}
+				else {
+					action["x"] = result / edge; action["y"] = result % edge;
+					break;
+				}
+			}*/
+		}
+		if (suspension) {
+			break;
+		}
+	}
+	if (!suspension) {
+			/*vector<int> prior_list1;
+			vector<int> prior_list2;
+			for (int i = 1; i < edge; i = i + 6) {
+				for (int j = 1; j < edge; j = j + 6) {
+					if (judgeAvailable(i, j, x == -1 ? 1 : -1)) {
+						prior_list1.push_back(i * edge + j);
+					}
+				}
+			}
+			for (int i = 0; i < edge; i = i + 7) {
+				for (int j = 0; j < edge; j = j + 7) {
+					if (judgeAvailable(i, j, x == -1 ? 1 : -1)) {
+						prior_list2.push_back(i * edge + j);
+					}
+				}
+			}
+			if (prior_list1.size() != 0) {
+				if (prior_list1.size() != 0) {
+					int result = prior_list1[rand() % prior_list1.size()];
+					action["x"] = result / 9; action["y"] = result % 9;
+				}
+				else if (prior_list1.size() == 0 && prior_list1.size() != 0) {
+					int result = prior_list2[rand() % prior_list1.size()];
+					action["x"] = result / 9; action["y"] = result % 9;
+				}
+			}*/
+		//else {
+			//int result = available_list[rand() % available_list.size()];
+			int result = visit(depth, x == -1 ? 1 : -1, available_list.size());
+			action["x"] = result / 9; action["y"] = result % 9;
+		//}
+	}
+	suspension = 0;
+	available_list.clear();
+	ret["response"] = action;
+	Json::FastWriter writer;
+	cout << writer.write(ret) << endl;
+	return 0;
+}
